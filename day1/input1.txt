@@ -1,0 +1,4 @@
+input for first problem
+1
+2
+3
