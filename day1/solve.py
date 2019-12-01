@@ -1,7 +1,7 @@
 # DAY 1
 
 file = open("day1/input.txt")
-data = [int(s.strip()) for s in file.readlines()]
+data = map(lambda x: int(x.strip()), file.readlines())
 total1 = []
 total2 = []
 for i in data:
