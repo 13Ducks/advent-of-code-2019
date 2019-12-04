@@ -15,7 +15,7 @@ def valid(num):
                     pair = True
     return pair
 
-for i in range(data[0], data[1]):
+for i in range(data[0], data[1]+1):
     if valid(str(i)):
         total += 1
 
@@ -25,7 +25,7 @@ print(total)
 from collections import Counter
 
 total_part1 = total_part2 = 0
-for i in range(data[0], data[1]):
+for i in range(data[0], data[1]+1):
     if sorted(list(str(i))) == list(str(i)):
         c = Counter(str(i)).values()
         if max(c) > 1:
