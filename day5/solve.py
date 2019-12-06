@@ -2,6 +2,8 @@
 
 file = open("day5/input.txt")
 input = list(map(int, file.readline().split(",")))
+
+# part 1 -> 1, part 2 -> 5
 ac = 5
 i = 0
 
