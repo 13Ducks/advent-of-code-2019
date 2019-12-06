@@ -37,16 +37,10 @@ while True:
         else:
             i+=3
     elif op == '07':
-        if input[int(index(param[2], 1))] < input[int(index(param[1], 2))]:
-            input[int(index(param[0], 3))] = 1
-        else:
-            input[int(index(param[0], 3))] = 0
+        input[int(index(param[0], 3))] = int(input[int(index(param[2], 1))] < input[int(index(param[1], 2))])
         i+=4
     elif op == '08':
-        if input[int(index(param[2], 1))] == input[int(index(param[1], 2))]:
-            input[int(index(param[0], 3))] = 1
-        else:
-            input[int(index(param[0], 3))] = 0
+        input[int(index(param[0], 3))] = int(input[int(index(param[2], 1))] == input[int(index(param[1], 2))])
         i+=4
     elif op == '99':
         break
