@@ -3,54 +3,62 @@
 file = open("day9/input.txt")
 input = list(map(int, file.readline().split(","))) + list(map(int,list('0'*1000000)))
 
-# part 1 -> 1, part 2 -> 2
-keyword = 2
-i = 0
-rel_base = 0
+def intcode(code):
+    i = 0
+    rel_base = 0
+    num_args = {'01':3,'02':3,'03':1,'04':1,'05':2,'06':2,'07':3,'08':3,'09':1,'99':0}
 
-def index(param, off):
-    if param == '0':
-        return input[i+off]
-    elif param == '1':
-        return i+off
-    else:
-        return input[i+off]+rel_base
+    def index(param, off):
+        if param == '0':
+            return code[i+off]
+        elif param == '1':
+            return i+off
+        else:
+            return code[i+off]+rel_base
 
-while True:
-    op = str(input[i])[-2:].zfill(2)
-    param = str(input[i])[:-2].zfill(3)
-    if op == '01':
-        input[int(index(param[0], 3))] = input[int(index(param[2], 1))] + input[int(index(param[1], 2))]
-        i+=4
-    elif op == '02':
-        input[int(index(param[0], 3))] = input[int(index(param[2], 1))] * input[int(index(param[1], 2))]
-        i+=4
-    elif op == '03':
-        input[int(index(param[2], 1))] = keyword
-        i+=2
-    elif op == '04':
-        print(input[int(index(param[2], 1))])
-        i+=2
-    elif op == '05':
-        if input[int(index(param[2], 1))] != 0:
-            i = input[int(index(param[1], 2))]
+    while True:
+        op = str(code[i])[-2:].zfill(2)
+        param = str(code[i])[:-2].zfill(3)
+        
+        if num_args[op] >= 1: arg1 = int(index(param[2], 1))
+        if num_args[op] >= 2: arg2 = int(index(param[1], 2))
+        if num_args[op] >= 3: arg3 = int(index(param[0], 3))
+        jump = False
+
+        if op == '01':
+            code[arg3] = code[arg1] + code[arg2]
+        elif op == '02':
+            code[arg3] = code[arg1] * code[arg2]
+        elif op == '03':
+            code[arg1] = yield 'needinput'
+        elif op == '04':
+            yield code[arg1]
+        elif op == '05':
+            if code[arg1] != 0:
+                i = code[arg2]
+                jump = True
+        elif op == '06':
+            if code[arg1] == 0:
+                i = code[arg2]
+                jump = True
+        elif op == '07':
+            code[arg3] = int(code[arg1] < code[arg2])
+        elif op == '08':
+            code[arg3] = int(code[arg1] == code[arg2])
+        elif op == '09':
+            rel_base += code[arg1]
+        elif op == '99':
+            yield 'break'
+            break
         else:
-            i+=3
-    elif op == '06':
-        if input[int(index(param[2], 1))] == 0:
-            i = input[int(index(param[1], 2))]
-        else:
-            i+=3
-    elif op == '07':
-        input[int(index(param[0], 3))] = int(input[int(index(param[2], 1))] < input[int(index(param[1], 2))])
-        i+=4
-    elif op == '08':
-        input[int(index(param[0], 3))] = int(input[int(index(param[2], 1))] == input[int(index(param[1], 2))])
-        i+=4
-    elif op == '09':
-        rel_base += input[int(index(param[2], 1))]
-        i+=2
-    elif op == '99':
-        break
-    else:
-        print(op)
+            print(op)
+        
+        if not jump: i+=num_args[op]+1
+
+comp = intcode(input.copy())
+next(comp)
+print(comp.send(1))
+
+comp = intcode(input.copy())
+next(comp)
+print(comp.send(2))

@@ -1,4 +1,4 @@
-# DAY 6
+# DAY 8
 from collections import Counter
 
 file = open("day8/input.txt")

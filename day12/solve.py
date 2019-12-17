@@ -27,25 +27,25 @@ def step(num):
     past_y.add(y)
     past_z.add(z)
 
+def total():
+    ans = 0
+    for i in range(len(pos)):
+        pe = sum(map(abs,pos[i]))
+        ke = sum(map(abs,vel[i]))
+        ans += pe*ke
+    return ans
 
-        
 num_steps = 0
-while 0 in same:
+while 0 in same or num_steps < 1000:
     step(num_steps)
+    if num_steps == 999:
+        print(total())
     num_steps+=1
-print(num_steps)
-
-total = 0
-for i in range(len(pos)):
-    pe = sum(map(abs,pos[i]))
-    ke = sum(map(abs,vel[i]))
-    total += pe*ke
-print(total)
 
 def gcd (a,b):
-    if a < b : a , b = b,a
+    if a < b : a, b = b,a
     while b:
-        a , b = b , a % b
+        a,b = b, a % b
     return a
 
 def lcm (a , b):
@@ -53,4 +53,4 @@ def lcm (a , b):
     return n
 
 print(same)
-print(lcm(same[2], lcm(same[0],same[1])))
+print(int(lcm(same[2], lcm(same[0],same[1]))))
