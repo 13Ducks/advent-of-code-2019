@@ -23,6 +23,5 @@ for n in range(100):
     for v in range(100):
         ans = solve(n,v)
         if ans == 19690720:
-            print(n,v)
             print(100*n+v)
             break
