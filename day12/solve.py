@@ -4,9 +4,7 @@ input = list(map(lambda x: x.strip()[1:-1].split(", "), file.readlines()))
 pos = [[int(j[i][2:]) for i in range(3)] for j in input]
 vel = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
 sign = lambda a: (a>0) - (a<0)
-past_x = set()
-past_y = set()
-past_z = set()
+past = [set() for _ in range(3)]
 same = [0,0,0]
 
 def step(num):
@@ -17,15 +15,12 @@ def step(num):
     for i,m in enumerate(pos):
         for x in range(3):
             m[x] += vel[i][x]
-    x = (tuple(i[0] for i in pos),tuple(i[0] for i in vel))
-    y = (tuple(i[1] for i in pos),tuple(i[1] for i in vel))
-    z = (tuple(i[2] for i in pos),tuple(i[2] for i in vel))
-    if x in past_x and not same[0]: same[0] = num
-    if y in past_y and not same[1]: same[1] = num
-    if z in past_z and not same[2]: same[2] = num
-    past_x.add(x)
-    past_y.add(y)
-    past_z.add(z)
+
+    coord = [(tuple(i[j] for i in pos),tuple(i[j] for i in vel)) for j in range(3)]
+    
+    for i in range(3):
+        if coord[i] in past[i] and not same[i]: same[i] = num
+        past[i].add(coord[i])
 
 def total():
     ans = 0
@@ -43,9 +38,9 @@ while 0 in same or num_steps < 1000:
     num_steps+=1
 
 def gcd (a,b):
-    if a < b : a, b = b,a
+    if a < b : a,b = b,a
     while b:
-        a,b = b, a % b
+        a,b = b, a%b
     return a
 
 def lcm (a , b):
