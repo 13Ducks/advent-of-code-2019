@@ -51,7 +51,7 @@ while True:
 
                     imgray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
                     blur = cv2.blur(imgray, (5, 5))
-                    ret, thresh = cv2.threshold(blur, 127, 255, 0)
+                    ret, thresh = cv2.threshold(blur, 64, 255, 0)
                     if not ret: continue
 
                     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
