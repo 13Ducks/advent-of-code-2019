@@ -24,7 +24,6 @@ kCameraPitchDeg = 40
 coverage_weight = 100
 aspect_weight = 50
 
-
 def nothing(x): pass
 
 
@@ -34,7 +33,7 @@ cv2.createTrackbar('H_min', 'Output', 65, 255, nothing)
 cv2.createTrackbar('H_max', 'Output', 80, 255, nothing)
 cv2.createTrackbar('S_min', 'Output', 80, 255, nothing)
 cv2.createTrackbar('S_max', 'Output', 255, 255, nothing)
-cv2.createTrackbar('V_min', 'Output', 130, 255, nothing)
+cv2.createTrackbar('V_min', 'Output', 75, 255, nothing)
 cv2.createTrackbar('V_max', 'Output', 255, 255, nothing)
 cv2.createTrackbar('Angle', 'Output', kCameraPitchDeg, 50, nothing)
 
@@ -108,14 +107,25 @@ def get_box(frame):
             cv2.putText(res, "x: " + str(p[0]), (p[0], p[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
             cv2.putText(res, "y: " + str(p[1]), (p[0], p[1]+12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
         
-        hull = sorted(hull, key=lambda x: x[1])
-        top = hull[:2]
-        bot = hull[-2:]
-        top_slope = (top[0][1]-top[1][1]) / (top[0][0]- top[1][0])
-        bot_slope = (bot[0][1]-bot[1][1]) / (bot[0][0]- bot[1][0])
-        print(top_slope - bot_slope)
-            
+        hull = sorted(hull, key=lambda x: x[0])
+        # top = hull[:2]
+        # bot = hull[-2:]
+        # top_slope = (top[0][1]-top[1][1]) / (top[0][0]- top[1][0])
+        # bot_slope = (bot[0][1]-bot[1][1]) / (bot[0][0]- bot[1][0])
+        # print(top_slope - bot_slope)
 
+        pts1 = np.array(hull, np.float32)
+        pts2 = np.array([[0, 0], [100, 170], [300, 170], [400, 0]], np.float32)
+        matrix = cv2.getPerspectiveTransform(pts1, pts2)
+        warp = cv2.warpPerspective(frame, matrix, (400, 170))
+        cv2.imshow("Perspective transformation", warp)
+
+        print(pts1)
+        print(pts2)
+
+        # https://stackoverflow.com/questions/15022630/how-to-calculate-the-angle-from-rotation-matrix
+        theta_z = np.arctan2(matrix[1][0], matrix[0][0])
+        print(np.degrees(theta_z))
         center, dim, angle = best_contour[1]
 
         if dim[0] < dim[1]:
@@ -141,6 +151,10 @@ def get_box(frame):
         distance = (kTargetHeightIn - kCameraHeightIn) / np.tan(
             np.radians(y_scale * (kVerticalFOVDeg / 2.0) + kCameraPitchDeg))
 
+        rel_x = distance * np.cos(theta_z)
+        rel_y = distance * np.sin(theta_z)
+        print(rel_x, rel_y)
+
     cv2.imshow('Output', res)
     if cv2.waitKey(0) & 0xFF == ord('q'):
         return (distance, azimuth)
@@ -148,6 +162,6 @@ def get_box(frame):
     # return (distance, azimuth)
 
 
-im = cv2.imread("grt/BlueGoal-Far-ProtectedZone.jpg")
+im = cv2.imread("grt/BlueGoal-156in-Left.jpg")
 while True:
     print(get_box(im))
