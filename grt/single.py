@@ -9,10 +9,13 @@ vision_tape_area = 110.85
 bounding_box = (40, 17)
 bounding_box_area = bounding_box[0] * bounding_box[1]
 coverage_area = vision_tape_area / bounding_box_area
-bounding_aspect = bounding_box[0] / bounding_box[1]
+
+hex_ratio = 39.261 / 19.360
 
 max_diff_allow = 80
-min_area = 1000
+min_area = 100
+min_coverage = 90
+min_hex_ratio = 90
 
 kHorizontalFOVDeg = 62.8
 kVerticalFOVDeg = 37.9
@@ -21,11 +24,7 @@ kTargetHeightIn = 8*12 + 2.25  # middle of hex height
 kCameraHeightIn = 6
 kCameraPitchDeg = 40
 
-coverage_weight = 100
-aspect_weight = 50
-
 def nothing(x): pass
-
 
 cv2.namedWindow("Output", cv2.WINDOW_AUTOSIZE)
 cv2.namedWindow("hsv", cv2.WINDOW_NORMAL)
@@ -63,89 +62,78 @@ def get_box(frame):
 
     contours, hierarchy = cv2.findContours(
         thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    best_contour = (0, 0, 0, 0)
+    best_hull = 0
     print("b4 cont")
 
     for cnt in contours:
+        area = cv2.contourArea(cnt)
+
+        if area < min_area:
+            continue
+
+        print("got past area")
+
         rect = cv2.minAreaRect(cnt)
         box = np.int0(cv2.boxPoints(rect))
-        area = cv2.contourArea(box)
+        rect_area = cv2.contourArea(box)
 
-        # cv2.drawContours(res, [box], 0,(0,0,255),2)
-        # print(area)
+        diff_coverage = 100 - 100 * abs(area/rect_area - coverage_area)
+        
+        if diff_coverage < min_coverage:
+            continue
 
-        if area > min_area:
-            print("got past area")
+        print("got past coverage")
 
-            diff_coverage = 100 - coverage_weight * abs(cv2.contourArea(cnt)/area - coverage_area)
-            width = max(rect[1])
-            height = min(rect[1])
-            diff_aspect = 100 - aspect_weight * abs(width/height - bounding_aspect)
-            diff_avg = (diff_aspect + diff_coverage)/2
-
-            #print(diff_coverage, diff_aspect, width, height)
-
-            if diff_avg > max_diff_allow:
-                best_contour = ([box], rect, area, cnt)
-
-    if best_contour[0] != 0:
-        hull = list(map(lambda x: x[0], cv2.convexHull(best_contour[3]).tolist()))
+        hull = list(map(lambda x: x[0], cv2.convexHull(cnt).tolist()))
         while len(hull) > 4:
             min_dist = [10000,0]
             for i,p in enumerate(hull):
                 x0, y0 = p
                 x1, y1 = hull[i-1]
                 x2, y2 = hull[(i+1)%len(hull)]
-                d = abs((y2-y1)*x0 - (x2-x1)*y0 + x2*y1 - y2*x1) / np.sqrt((y2-y1)**2 + (x2-x1)**2)
+                d = abs((y2-y1)*x0 - (x2-x1)*y0 + x2*y1 - y2*x1) / np.hypot((y2-y1),(x2-x1))
                 if min_dist[0] > d:
                     min_dist = [d,p]
-
             hull.remove(min_dist[1])
-        
-        for p in hull:
+
+        hull = sorted(hull, key=lambda x: x[0])
+        top = (hull[0],hull[3])
+        bot = (hull[1],hull[2])
+        dist_top = np.hypot(top[0][0]-top[1][0], top[0][1]-top[1][1])
+        dist_bot = np.hypot(bot[0][0]-bot[1][0], bot[0][1]-bot[1][1])
+        diff_hex_ratio = 100 - 100*(hex_ratio - dist_top/dist_bot)
+        print(dist_top, dist_bot)
+
+        if diff_hex_ratio < min_hex_ratio:
+            continue
+
+        print("got past hex ratio")
+
+        best_hull = hull
+
+    if best_hull != 0:        
+        for p in best_hull:
             cv2.drawMarker(res, tuple(p), (0, 128, 255), thickness=2)
             cv2.putText(res, "x: " + str(p[0]), (p[0], p[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
             cv2.putText(res, "y: " + str(p[1]), (p[0], p[1]+12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255))
-        
-        hull = sorted(hull, key=lambda x: x[0])
-        # top = hull[:2]
-        # bot = hull[-2:]
-        # top_slope = (top[0][1]-top[1][1]) / (top[0][0]- top[1][0])
-        # bot_slope = (bot[0][1]-bot[1][1]) / (bot[0][0]- bot[1][0])
-        # print(top_slope - bot_slope)
+    
+        pts1 = np.array(best_hull, np.float32)
+        x,y = [(pts1[0][0] + pts1[3][0])/2, (pts1[0][1] + pts1[3][1])/2]
 
-        pts1 = np.array(hull, np.float32)
         pts2 = np.array([[0, 0], [100, 170], [300, 170], [400, 0]], np.float32)
+
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         warp = cv2.warpPerspective(frame, matrix, (400, 170))
         cv2.imshow("Perspective transformation", warp)
 
-        print(pts1)
-        print(pts2)
-
         # https://stackoverflow.com/questions/15022630/how-to-calculate-the-angle-from-rotation-matrix
         theta_z = np.arctan2(matrix[1][0], matrix[0][0])
         print(np.degrees(theta_z))
-        center, dim, angle = best_contour[1]
-
-        if dim[0] < dim[1]:
-            dim = list(reversed(dim))
-            angle += 90
-
-        x = int(center[0] + 0.5 * dim[1] *
-                np.sin(np.radians(angle)))
-        y = int(center[1] - 0.5 * dim[1] *
-                np.cos(np.radians(angle)))
-
+       
         x_scale = 2 * (x / frame.shape[1]) - 1
         y_scale = -(2 * (y / frame.shape[0]) - 1)
 
-        # cv2.drawContours(res, best_contour[0], 0, (0, 0, 255), 2)
-        # cv2.drawMarker(res, tuple(map(int, (x, y))), (0, 255, 0), thickness=2)
-        # cv2.putText(res, "x: " + str(round(x_scale, 4)),
-        #             (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
-        # cv2.putText(res, "y: " + str(round(y_scale, 4)), (int(x),
-        #                                                   int(y)+25), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+        cv2.drawMarker(res, tuple(map(int, [x,y])), (0, 255, 0), thickness=2)
 
         azimuth = x_scale * kHorizontalFOVDeg / 2.0
         distance = (kTargetHeightIn - kCameraHeightIn) / np.tan(
@@ -153,15 +141,22 @@ def get_box(frame):
 
         rel_x = distance * np.cos(theta_z)
         rel_y = distance * np.sin(theta_z)
+
         print(rel_x, rel_y)
+        print(distance, azimuth)
 
     cv2.imshow('Output', res)
-    if cv2.waitKey(0) & 0xFF == ord('q'):
-        return (distance, azimuth)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        return
     # print("after wait")
     # return (distance, azimuth)
 
 
-im = cv2.imread("grt/BlueGoal-156in-Left.jpg")
+im = cv2.imread("grt/BlueGoal-060in-Center.jpg")
+cap = cv2.VideoCapture(1)
+if not cap.isOpened(): 
+    print("Error opening stream")
 while True:
-    print(get_box(im))
+    #print(get_box(im))
+    _, frame = cap.read()
+    get_box(frame)
