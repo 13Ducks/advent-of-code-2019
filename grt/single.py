@@ -9,20 +9,22 @@ vision_tape_area = 110.85
 bounding_box = (40, 17)
 bounding_box_area = bounding_box[0] * bounding_box[1]
 coverage_area = vision_tape_area / bounding_box_area
+bounding_aspect = bounding_box[0] / bounding_box[1]
 
 hex_ratio = 39.261 / 19.360
 
 max_diff_allow = 80
 min_area = 100
 min_coverage = 90
+min_aspect = 65
 min_hex_ratio = 90
 
 kHorizontalFOVDeg = 62.8
 kVerticalFOVDeg = 37.9
 
 kTargetHeightIn = 8*12 + 2.25  # middle of hex height
-kCameraHeightIn = 6
-kCameraPitchDeg = 40
+kCameraHeightIn = 15
+kCameraPitchDeg = 30
 
 def nothing(x): pass
 
