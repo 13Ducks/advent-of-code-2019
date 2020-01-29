@@ -9,14 +9,14 @@ vision_tape_area = 110.85
 bounding_box = (40, 17)
 bounding_box_area = bounding_box[0] * bounding_box[1]
 coverage_area = vision_tape_area / bounding_box_area
-bounding_aspect = bounding_box[0] / bounding_box[1]
+# bounding_aspect = bounding_box[0] / bounding_box[1]
 
 hex_ratio = 39.261 / 19.360
 
 max_diff_allow = 80
 min_area = 100
 min_coverage = 90
-min_aspect = 65
+# min_aspect = 65
 min_hex_ratio = 90
 
 kHorizontalFOVDeg = 62.8
@@ -55,7 +55,8 @@ while True:
                     res = cv2.bitwise_and(frame, frame, mask=mask)
 
                     imgray = cv2.cvtColor(res, cv2.COLOR_BGR2GRAY)
-                    blur = cv2.blur(imgray, (5,5))
+                    # NOTE: median blur
+                    blur = cv2.medianBlur(imgray,7)
                     ret, thresh = cv2.threshold(blur, 64, 255, 0)
 
                     contours, hierarchy = cv2.findContours(
@@ -76,11 +77,11 @@ while True:
 
                         diff_coverage = 100 - 100 * abs(area/rect_area - coverage_area)
 
-                        width = max(rect[1])
-                        height = min(rect[1])
-                        diff_aspect = 100 - 100*abs(width/height - bounding_aspect)
+                        # width = max(rect[1])
+                        # height = min(rect[1])
+                        # diff_aspect = 100 - 100*abs(width/height - bounding_aspect)
                         
-                        if diff_coverage < min_coverage or diff_aspect < min_aspect:
+                        if diff_coverage < min_coverage:
                             continue
 
                         hull = list(map(lambda x: x[0], cv2.convexHull(cnt).tolist()))
@@ -106,7 +107,7 @@ while True:
                         if diff_hex_ratio < min_hex_ratio:
                             continue
                         
-                        total_diff = (diff_hex_ratio + diff_coverage + diff_aspect) / 3
+                        total_diff = (diff_hex_ratio + diff_coverage) / 2
                         if total_diff > best_diff:
                             best_hull = hull
                             best_diff = total_diff
@@ -115,11 +116,9 @@ while True:
                         
                         pts1 = np.array(best_hull, np.float32)
                         x,y = [(pts1[0][0] + pts1[3][0])/2, (pts1[0][1] + pts1[3][1])/2]
-
                         pts2 = np.array([[0, 0], [100, 170], [300, 170], [400, 0]], np.float32)
 
                         matrix = cv2.getPerspectiveTransform(pts1, pts2)
-
                         pitch = np.arcsin(matrix[1][0])
                     
                         x_scale = 2 * (x / frame.shape[1]) - 1
