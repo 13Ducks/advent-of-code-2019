@@ -5,7 +5,7 @@ from datetime import datetime
 
 s=["start"]
 while s:
-    quote_page = "https://wpilib.org/blogc/machine-learning-technology-preview-coming-soon"
+    quote_page = "https://wpilib.org/blog/machine-learning-technology-preview-coming-soon"
     page = urlopen(quote_page)
     soup = BeautifulSoup(page, 'html.parser')
     s = soup.find_all("p", string="Check back in the coming days for more details!")
