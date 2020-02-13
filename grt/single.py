@@ -30,8 +30,8 @@ kTargetHeightIn = 8*12 + 2.25  # middle of hex height
 kCameraHeightIn = 18
 kCameraPitchDeg = 35
 
-cameraMatrix = np.array([[678.154, 0,          320],
-                         [0,          678.17, 240],
+cameraMatrix = np.array([[678.154, 0, 318.135],
+                         [0,          678.17, 228.374],
                          [0,          0,          1]])
 
 # cameraMatrix = np.array([
@@ -40,7 +40,7 @@ cameraMatrix = np.array([[678.154, 0,          320],
 #                                          [ 0,          0,          1   ]
 #                                      ])
 
-dist_coeffs =np.array([0.154576, -1.19143, 0, 0, 2.06105, 0, 0, 0])
+dist_coeffs = np.array([0.154576, -1.19143, 0, 0, 2.06105])
 #dist_coeffs = np.array([ 2.3614217917861352e-01, -2.8983267012643715e-01,
     #    -1.1519795733873316e-03, -8.7701317797552109e-04,
     #    -2.4354602371303335e+00 ])
@@ -64,13 +64,13 @@ def law_of_cosines(a=None, b=None, c=None, opp_angle=None):
 
 def nothing(x): pass
 
-cv2.namedWindow("Output", cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow("Output", cv2.WINDOW_NORMAL)
 
-cv2.createTrackbar('H_min', 'Output', 65, 255, nothing)
+cv2.createTrackbar('H_min', 'Output', 75, 255, nothing)
 cv2.createTrackbar('H_max', 'Output', 100, 255, nothing)
 cv2.createTrackbar('S_min', 'Output', 80, 255, nothing)
 cv2.createTrackbar('S_max', 'Output', 255, 255, nothing)
-cv2.createTrackbar('V_min', 'Output', 75, 255, nothing)
+cv2.createTrackbar('V_min', 'Output', 245, 255, nothing)
 cv2.createTrackbar('V_max', 'Output', 255, 255, nothing)
 
 # cap = cv2.VideoCapture(0)
@@ -139,6 +139,9 @@ def get_box(frame):
     yaw = 0
     roll = 0
 
+    undist = cv2.undistort(frame, cameraMatrix, dist_coeffs)
+    cv2.imshow("undist", undist)
+
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     lower_green =np.array([cv2.getTrackbarPos("H_min", "Output"), cv2.getTrackbarPos(
@@ -182,11 +185,14 @@ def get_box(frame):
 
 
             leftmost = tuple(cnt[cnt[:,:,0].argmin()][0])
-            rightmost = tuple(cnt[cnt[:,:,0].argmax()][0])
-            bottommost = tuple(cnt[cnt[:,:,1].argmax()][0])
-            cv2.drawMarker(res, bottommost, (0, 128, 255), thickness=2)
-            cv2.drawMarker(res, leftmost, (0, 128, 255), thickness=2)
-            cv2.drawMarker(res, rightmost, (0, 128, 255), thickness=2)
+            # rightmost = tuple(cnt[cnt[:,:,0].argmax()][0])
+            # bottommost = tuple(cnt[cnt[:,:,1].argmax()][0])
+            # cv2.drawMarker(res, bottommost, (0, 128, 255), thickness=2)
+            #cv2.drawMarker(res, leftmost, (0, 128, 255), thickness=2)
+            
+            # y_scale = -(2 * (leftmost[1] / frame.shape[0]) - 1)
+            # cv2.putText(res, str(y_scale), tuple(leftmost), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,128,255))
+            # cv2.drawMarker(res, rightmost, (0, 128, 255), thickness=2)
             area = cv2.contourArea(cnt)
             hull = cv2.convexHull(cnt)
             hull_area = cv2.contourArea(hull)
@@ -195,24 +201,27 @@ def get_box(frame):
     if best_hull != 0:
         pts1 = np.array(best_hull, np.float32)
         left, right = pts1[0], pts1[3]
-        print(left, right)
+        #print(left, right)
+        
 
         y_scale = -(2 * (left[1] / frame.shape[0]) - 1)
+        print(y_scale)
+        cv2.putText(res, str(y_scale), tuple(left), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,128,255))
         d1 =(kTargetHeightIn - kCameraHeightIn) / np.tan(
             np.radians(y_scale * (kVerticalFOVDeg / 2.0) + kCameraPitchDeg))
-        print(d1)
+        #print(d1)
 
         y_scale = -(2 * (right[1] / frame.shape[0]) - 1)
         d2 =(kTargetHeightIn - kCameraHeightIn) / np.tan(
             np.radians(y_scale * (kVerticalFOVDeg / 2.0) + kCameraPitchDeg))
-        print(d2)
+        #print(d2)
 
         angle1 = law_of_cosines(a=max([d1,d2]), b=40, c=min([d1,d2]))
         cd = law_of_cosines(a=max([d1,d2]),b=20,opp_angle=angle1)
-        print(angle1, cd)
+        #print(angle1, cd)
 
         final = law_of_cosines(a=cd, b=20, c=max([d1,d2]))
-        print(final)
+        #print(final)
 
         x = cd * np.cos(np.radians(final))
         y = cd * np.sin(np.radians(final))
@@ -244,6 +253,7 @@ def get_box(frame):
 
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         warped = cv2.warpPerspective(frame, matrix, (400,170))
+        cv2.imshow("warped", warped)
         yaw = np.arctan2(matrix[0][1],matrix[1][1])
         pitch = np.arcsin(matrix[2][1])
         roll = np.arctan2(matrix[2][0],matrix[2][2])
@@ -255,14 +265,14 @@ def get_box(frame):
         distance =(kTargetHeightIn - kCameraHeightIn) / np.tan(
             np.radians(y_scale * (kVerticalFOVDeg / 2.0) + kCameraPitchDeg))
 
-        print("PERSPECTIVE TRANSFORM", np.degrees(yaw), np.degrees(pitch), np.degrees(roll))
+        #print("PERSPECTIVE TRANSFORM", np.degrees(yaw), np.degrees(pitch), np.degrees(roll))
 
-        print("ONLY WORKING THING", azimuth, distance)
+        #print("ONLY WORKING THING", azimuth, distance)
 
         #print(pts1)
 
     cv2.imshow('Output', res)
-    cv2.imshow("warped", warped)
+    #cv2.imshow('Output2', frame)
     #cv2.imshow("blur", blur)
     #print(np.degrees(yaw), np.degrees(pitch), np.degrees(roll))
     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -270,11 +280,11 @@ def get_box(frame):
     # print("after wait")
     # return (distance, azimuth)
 
-im = cv2.imread("grt/BlueGoal-060in-Center.jpg")
-# cap = cv2.VideoCapture("grt/bigtest.mov")
-# if not cap.isOpened():
-# print("Error opening stream")
+#im = cv2.imread("grt/BlueGoal-060in-Center.jpg")
+cap = cv2.VideoCapture("grt/yscale.mov")
+if not cap.isOpened():
+    print("Error opening stream")
 while True:
-    print(get_box(im))
-    # _, frame = cap.read()
-    # get_box(frame)
+    # print(get_box(im))
+    _, frame = cap.read()
+    get_box(frame)
