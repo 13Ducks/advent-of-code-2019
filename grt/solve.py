@@ -31,6 +31,13 @@ kCameraPitchDeg = 25
 lower_green = np.array([0,0,250])
 upper_green = np.array([200,10,255])
 
+def law_of_cosines(a=None, b=None, c=None, opp_angle=None):
+    if opp_angle is None:
+        return np.degrees(np.arccos((c**2 - a**2 - b**2)/(-2*a*b)))
+    else:
+        opp_angle = np.radians(opp_angle)
+        return np.sqrt(a**2 + b**2 - 2*a*b*np.cos(opp_angle))
+
 cap = cv2.VideoCapture(0)
 
 if not cap.isOpened(): 
@@ -47,6 +54,8 @@ while True:
                 while(cap.isOpened()):
                     distance = 0
                     azimuth = 0
+                    x_rel = 0
+                    y_rel = 0
 
                     _, frame = cap.read()
 
@@ -118,7 +127,26 @@ while True:
                     if best_hull != 0:        
                         
                         pts1 = np.array(best_hull, np.float32)
-                        x,y = [(pts1[0][0] + pts1[3][0])/2, (pts1[0][1] + pts1[3][1])/2]
+                        left, right = pts1[0], pts1[3]
+
+                        y_scale = -(2 * (left[1] / frame.shape[0]) - 1)
+                        d1 =(kTargetHeightIn - kCameraHeightIn) / np.tan(
+                            np.radians(y_scale * (kVerticalFOVDeg / 2.0) + kCameraPitchDeg))
+                        
+                        y_scale = -(2 * (right[1] / frame.shape[0]) - 1)
+                        d2 =(kTargetHeightIn - kCameraHeightIn) / np.tan(
+                            np.radians(y_scale * (kVerticalFOVDeg / 2.0) + kCameraPitchDeg))
+
+                        angle1 = law_of_cosines(a=max([d1,d2]), b=40, c=min([d1,d2]))
+                        cd = law_of_cosines(a=max([d1,d2]),b=20,opp_angle=angle1)
+
+                        final = law_of_cosines(a=cd, b=20, c=max([d1,d2]))
+            
+                        x_rel = cd * np.cos(np.radians(final))
+                        y_rel = cd * np.sin(np.radians(final))
+                        if d2 < d1: x_rel *= -1
+
+                        x,y = [(left[0] + right[0])/2, (left[1] + right[1])/2]
                     
                         x_scale = 2 * (x / frame.shape[1]) - 1
                         y_scale = -(2 * (y / frame.shape[0]) - 1)
@@ -130,7 +158,7 @@ while True:
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
 
-                    conn.send(bytes(str((distance,azimuth))+"\n","UTF-8"))
+                    conn.send(bytes(str((distance,azimuth,x_rel,y_rel))+"\n","UTF-8"))
     except (BrokenPipeError, ConnectionResetError, ConnectionRefusedError) as e:
         print("connection lost... retrying")
     
